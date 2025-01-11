@@ -10,12 +10,12 @@
  * */
 
 const productCarousel = (() => {
-  const OPTIONS = {
+  const PARAMETERS = {
     apiUrl:
       "https://gist.githubusercontent.com/sevindi/5765c5812bbc8238a38b3cf52f233651/raw/56261d81af8561bf0a7cf692fe572f9e1e91f372/products.json",
     html: {
       container: {
-        appendTo: "product-detail",
+        parentElem: "product-detail",
         className: "product-carousel-container",
       },
       item: {
@@ -23,7 +23,6 @@ const productCarousel = (() => {
       },
     },
     css: {
-      appendTo: "head",
       className: "carousel-style",
     },
     storageNames: {
@@ -31,31 +30,30 @@ const productCarousel = (() => {
       favs: "favorited_products",
     },
   };
-
-  const fetchProdData = async (url) => {
+  const getProductData = async (url) => {
     try {
-      const isDataCached =
-        localStorage.key(0) == OPTIONS.storageNames.products ? true : false;
-      if (!isDataCached) {
+      const data = localStorage.getItem(PARAMETERS.storageNames.products);
+      if (!data) {
         const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`failed to fetch: ${response.status}`);
         }
         const responseJson = await response.json();
         localStorage.setItem(
-          OPTIONS.storageNames.products,
+          PARAMETERS.storageNames.products,
           JSON.stringify(responseJson),
         );
         return responseJson;
       }
-      return JSON.parse(localStorage.getItem(OPTIONS.storageNames.products));
+      return JSON.parse(data);
     } catch (error) {
-      console.error(`${this.fetchProdData.name}:${error}`);
+      console.error(`${productCarousel.name}:${error}`);
+      return [];
     }
   };
 
   const buildItems = (prodList, className) => {
-    items = prodList.map((value, index) =>
+    const items = prodList.map((value, index) =>
       $("<div>", {
         class: String(className),
         id: String(className).concat(["-", String(index)]),
@@ -67,13 +65,12 @@ const productCarousel = (() => {
 
   const buildHtml = (element, className, prodList) => {
     const container = $("<div>", { class: String(className) });
-    container.append(buildItems(prodList, OPTIONS.html.item.className));
-    $(`.${element}`).append(container);
+    container.append(buildItems(prodList, className));
+    $(".".concat(element)).append(container);
   };
 
-  const buildContainerCss = (element, classSelector) => {
+  const buildContainerCss = (classSelector) => {
     const CSS = $("<style>", {
-      id: "fsdf",
       html: ` 
     .${classSelector} {
         background-color : red;
@@ -81,20 +78,17 @@ const productCarousel = (() => {
         }
      `,
     });
-    CSS.appendTo(String(element));
+    CSS.appendTo("head");
   };
 
-  const setEvents = () => {};
-
   const build = async () => {
-    const prodListJson = await fetchProdData(OPTIONS.apiUrl);
-
-    buildContainerCss(OPTIONS.css.appendTo, OPTIONS.html.container.className);
+    const productsJson = await getProductData(PARAMETERS.apiUrl);
+    buildContainerCss(PARAMETERS.html.container.className);
 
     buildHtml(
-      OPTIONS.html.container.appendTo,
-      OPTIONS.html.container.className,
-      prodListJson,
+      PARAMETERS.html.container.parentElem,
+      PARAMETERS.html.container.className,
+      productsJson,
     );
   };
 
