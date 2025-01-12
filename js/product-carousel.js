@@ -7,6 +7,8 @@
  *      You may find a html file at root directory to test it
  *      via typing "productCarousel.build()"
  *      on the web browser console.
+ *
+ *      Developed with VIM.
  * */
 
 const productCarousel = (() => {
@@ -18,78 +20,88 @@ const productCarousel = (() => {
         parentElem: "product-detail",
         className: "product-carousel-container",
       },
+      track: {
+        className: "product-carousel-track",
+      },
       item: {
         className: "product-carousel-item",
       },
     },
-    css: {
-      className: "carousel-style",
-    },
-    storageNames: {
-      products: "products",
-      favs: "favorited_products",
-    },
+    storageNames: "product-carousel-items",
   };
-  const getProductData = async (url) => {
+
+  var products = [];
+
+  const fetchAndCacheProducts = async () => {
     try {
-      const data = localStorage.getItem(PARAMETERS.storageNames.products);
-      if (!data) {
-        const response = await fetch(url);
+      if (products.length == 0) {
+        const response = await fetch(PARAMETERS.apiUrl);
         if (!response.ok) {
           throw new Error(`failed to fetch: ${response.status}`);
         }
-        const responseJson = await response.json();
-        localStorage.setItem(
-          PARAMETERS.storageNames.products,
-          JSON.stringify(responseJson),
-        );
-        return responseJson;
+        products = (await response.json()).map((value) => {
+          value.favorite = false;
+          return value;
+        });
+        localStorage.setItem(PARAMETERS.storageNames, JSON.stringify(products));
       }
-      return JSON.parse(data);
     } catch (error) {
       console.error(`${productCarousel.name}:${error}`);
-      return [];
     }
   };
 
-  const buildItems = (prodList, className) => {
-    const items = prodList.map((value, index) =>
-      $("<div>", {
-        class: String(className),
-        id: String(className).concat(["-", String(index)]),
-        text: value.name,
-      }),
-    );
+  const buildItems = () => {
+    const items = products.map((value, index) => {
+      const item = $("<div>", {
+        class: String(PARAMETERS.html.item.className),
+        id: String(PARAMETERS.html.item.className).concat(["-", String(index)]),
+      });
+      const image = $("<img>", { src: value.img });
+      const name = $("<span>", { text: value.name });
+      const price = $("<span>", { text: value.price });
+      item.append(image, name, price);
+      return item;
+    });
     return items;
   };
 
-  const buildHtml = (element, className, prodList) => {
-    const container = $("<div>", { class: String(className) });
-    container.append(buildItems(prodList, className));
-    $(".".concat(element)).append(container);
+  const buildContainer = () => {
+    const track = $("<div>", {});
+    track.append(buildItems());
+    const container = $("<div>", {
+      class: String(PARAMETERS.html.container.className),
+    });
+    container.append(track);
+    $(".".concat(PARAMETERS.html.container.parentElem)).append(container);
   };
 
-  const buildContainerCss = (classSelector) => {
+  const buildCss = () => {
     const CSS = $("<style>", {
       html: ` 
-    .${classSelector} {
-        background-color : red;
-        color: white;
-        }
+    .${PARAMETERS.html.container.className} {
+        display: block;
+        position: relative;
+        width: 80%;
+        overflow: hidden;
+    }
+    .${PARAMETERS.html.track.className} {
+        display: flex;
+    }
+    .${PARAMETERS.html.item.className} {
+        display: grid;
+    }
+    .${PARAMETERS.html.item.className} img {
+        width: 25px;
+    }
      `,
     });
     CSS.appendTo("head");
   };
 
   const build = async () => {
-    const productsJson = await getProductData(PARAMETERS.apiUrl);
-    buildContainerCss(PARAMETERS.html.container.className);
-
-    buildHtml(
-      PARAMETERS.html.container.parentElem,
-      PARAMETERS.html.container.className,
-      productsJson,
-    );
+    await fetchAndCacheProducts(PARAMETERS.apiUrl);
+    buildCss();
+    buildContainer();
   };
 
   const self = {
@@ -98,3 +110,5 @@ const productCarousel = (() => {
 
   return self;
 })();
+
+productCarousel.build();
