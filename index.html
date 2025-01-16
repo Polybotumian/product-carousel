@@ -14,9 +14,13 @@ DESCRIPTION:
     <script src="js/jquery.js"></script>
     <script src="js/product-carousel.js"></script>
   </head>
-  <body>
-    <div class="product-detail" style="background-color: blue">
-      <span>DIV</span>
-    </div>
+  <body style="background-color: gray">
+    <div class="product-detail"></div>
+    <script>
+      $(document).ready(() => {
+        // IIFE call moved here due to cached data done before DOM is actually built.
+        productCarousel.build();
+      });
+    </script>
   </body>
 </html>

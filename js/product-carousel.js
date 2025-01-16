@@ -7,7 +7,6 @@
  *      You may find a html file at root directory to test it
  *      via typing "productCarousel.build()"
  *      on the web browser console.
- *
  *      Developed with VIM.
  * */
 
@@ -15,26 +14,37 @@ const productCarousel = (() => {
   const PARAMETERS = {
     apiUrl:
       "https://gist.githubusercontent.com/sevindi/5765c5812bbc8238a38b3cf52f233651/raw/56261d81af8561bf0a7cf692fe572f9e1e91f372/products.json",
-    html: {
-      container: {
-        parentElem: "product-detail",
-        className: "product-carousel-container",
-      },
-      track: {
-        className: "product-carousel-track",
-      },
-      item: {
-        className: "product-carousel-item",
-      },
-    },
-    storageNames: "product-carousel-items",
+    storageKey: "product-carousel-items",
+    appendTo: "product-detail",
+    class_container: "product-carousel-container",
+    class_container_div: "product-carousel-inner-div",
+    class_container_title: "product-carousel-title",
+    class_container_button_left: "product-carousel-button-left",
+    class_container_button_right: "product-carousel-button-right",
+    class_tray: "product-carousel-tray",
+    class_track: "product-carousel-track",
+    class_item: "product-carousel-item",
+    class_item_image_wrapper: "product-carousel-item-image-wrapper",
+    class_item_favorite_div: "product-carousel-item-favorite-div",
+    class_item_favorite: "product-carousel-item-favorite",
+    class_item_image: "product-carousel-item-image",
+    class_item_infobox: "product-carousel-item-infobox",
+    class_item_title: "product-carousel-item-title",
+    class_item_price: "product-carousel-item-price",
   };
 
-  var products = [];
+  let products,
+    container,
+    track,
+    items,
+    slidePercent = 0;
 
   const fetchAndCacheProducts = async () => {
     try {
-      if (products.length == 0) {
+      console.log("Checking localStorage..");
+      products = JSON.parse(localStorage.getItem(PARAMETERS.storageKey));
+      if (products === null) {
+        console.log("Fetching product data from the API..");
         const response = await fetch(PARAMETERS.apiUrl);
         if (!response.ok) {
           throw new Error(`failed to fetch: ${response.status}`);
@@ -43,72 +53,236 @@ const productCarousel = (() => {
           value.favorite = false;
           return value;
         });
-        localStorage.setItem(PARAMETERS.storageNames, JSON.stringify(products));
+        localStorage.setItem(PARAMETERS.storageKey, JSON.stringify(products));
+        console.log("Caching data..");
       }
+      console.log("Found cached data.");
     } catch (error) {
       console.error(`${productCarousel.name}:${error}`);
     }
   };
 
   const buildItems = () => {
-    const items = products.map((value, index) => {
-      const item = $("<div>", {
-        class: String(PARAMETERS.html.item.className),
-        id: String(PARAMETERS.html.item.className).concat(["-", String(index)]),
+    try {
+      console.log("Building items..");
+      items = products.map((value, index) => {
+        const item = $("<div>", {
+          class: String(PARAMETERS.class_item),
+          id: String(PARAMETERS.class_item).concat("-", String(index)),
+        });
+        const imageLink = $("<a>", { href: value.url });
+        const image = $("<img>", {
+          class: PARAMETERS.class_item_image,
+          src: value.img,
+        });
+        imageLink.append(image);
+        const favoriteDiv = $("<div>", {
+          class: PARAMETERS.class_item_favorite_div,
+        });
+        // Don't use JQuery to create SVG due to JQuery treat it if it is plain HTML
+        const svg = ` 
+        <svg xmlns="http://www.w3.org/2000/svg" width="20.576" height="19.483" viewBox="0 0 20.576 19.483">
+          <path fill="none" stroke="#555" stroke-width="1.5px" 
+            d="M19.032 7.111c-.278-3.063-2.446-5.285-5.159-5.285a5.128 5.128 0 0 0-4.394 2.532 
+               4.942 4.942 0 0 0-4.288-2.532C2.478 1.826.31 4.048.032 7.111a5.449 5.449 0 0 0 .162 2.008 
+               8.614 8.614 0 0 0 2.639 4.4l6.642 6.031 6.755-6.027a8.615 8.615 0 0 0 2.639-4.4 
+               5.461 5.461 0 0 0 .163-2.012z" 
+            transform="translate(.756 -1.076)">
+          </path>
+        </svg>`;
+        favoriteDiv.append(svg);
+        const imageWrapper = $("<div>", {
+          class: PARAMETERS.class_item_image_wrapper,
+        });
+        imageWrapper.append(imageLink, favoriteDiv);
+        const titleDiv = $("<div>", {});
+        const titleLink = $("<a>", {
+          href: value.url,
+          text: value.name,
+          class: PARAMETERS.class_item_title,
+        });
+        titleDiv.append(titleLink);
+        const priceDiv = $("<p>", {
+          class: PARAMETERS.class_item_price,
+        });
+        const price = $("<p>", {
+          class: PARAMETERS.class_item_price,
+          text: String(value.price).concat(" ", "TRY"),
+        });
+        priceDiv.append(price);
+        const infoBox = $("<div>", { class: PARAMETERS.class_item_infobox });
+        infoBox.append(titleDiv, priceDiv);
+        item.append(imageWrapper, infoBox);
+        return item;
       });
-      const image = $("<img>", { src: value.img });
-      const name = $("<span>", { text: value.name });
-      const price = $("<span>", { text: value.price });
-      item.append(image, name, price);
-      return item;
-    });
-    return items;
+      console.log("Items ok!");
+    } catch (error) {
+      console.error(`Items failed: ${error}`);
+    }
   };
 
   const buildContainer = () => {
-    const track = $("<div>", {});
-    track.append(buildItems());
-    const container = $("<div>", {
-      class: String(PARAMETERS.html.container.className),
-    });
-    container.append(track);
-    $(".".concat(PARAMETERS.html.container.parentElem)).append(container);
+    try {
+      console.log("Building container..");
+      track = $("<div>", { class: PARAMETERS.class_track });
+      track.append(items);
+      tray = $("<div>", { class: PARAMETERS.class_tray });
+      const leftButton = $("<button>", {
+        class: PARAMETERS.class_container_button_left,
+      });
+      leftButton.on("click", () => {
+        moveSlide(1);
+      });
+      const leftButtonSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="14.242" height="24.242" viewBox="0 0 14.242 24.242"><path fill="none" stroke="#333" stroke-linecap="round" stroke-width="3px" d="M2106.842 2395.467l-10 10 10 10" transform="translate(-2094.721 -2393.346)"></path></svg>`;
+      leftButton.append(leftButtonSvg);
+      const rightButton = $("<button>", {
+        class: PARAMETERS.class_container_button_right,
+      });
+      rightButton.on("click", () => {
+        moveSlide(-1);
+      });
+      const rightButtonSvg = `<svg xmlns="http://www.w3.org/2000/svg" transform="matrix(-1,0,0,1,0,0)" width="14.242" height="24.242" viewBox="0 0 14.242 24.242"><path fill="none" stroke="#333" stroke-linecap="round" stroke-width="3px" d="M2106.842 2395.467l-10 10 10 10" transform="translate(-2094.721 -2393.346)"></path></svg>`;
+      rightButton.append(rightButtonSvg);
+      tray.append(leftButton, track, rightButton);
+      container = $("<div>", {
+        class: String(PARAMETERS.class_container),
+      });
+      const title = $("<p>", {
+        class: PARAMETERS.class_container_title,
+        text: "You Might Also Like",
+      });
+      const titleDiv = $("<div>", {});
+      titleDiv.append(title);
+      const containerDiv = $("<div>", {
+        class: PARAMETERS.class_container_div,
+      });
+      containerDiv.append(titleDiv, tray);
+      container.append(containerDiv);
+      $(".".concat(PARAMETERS.appendTo)).append(container);
+      console.log("Container ok!");
+    } catch (error) {
+      console.error(`Container failed: ${error}`);
+    }
   };
 
   const buildCss = () => {
     const CSS = $("<style>", {
       html: ` 
-    .${PARAMETERS.html.container.className} {
+    .${PARAMETERS.class_container} {
+        display: flex;
+        justify-content: center;
+    }
+    .${PARAMETERS.class_container_div} {
         display: block;
-        position: relative;
-        width: 80%;
+        width: 78.5%;
+    }
+    .${PARAMETERS.class_container_title} {
+        font-size: 32px;
+        line-height: 43px;
+        font-weight: lighter;
+        padding: 15px 0;
+        margin: 0;
+        color: #29323b;
+    }
+    .${PARAMETERS.class_tray} {
+        display: flex;
+        flex-flow: row;
         overflow: hidden;
     }
-    .${PARAMETERS.html.track.className} {
+    .${PARAMETERS.class_container_button_left},
+    .${PARAMETERS.class_container_button_right} {
+        width: 22.25px;
+        height: 30.9667px;
+        margin: 0;
+        align-self: center;
+        background: none;
+        border: none;
+        cursor: pointer;
+        position: absolute;
+    }
+    .${PARAMETERS.class_container_button_left} {
+        left: 9%;
+    }
+    .${PARAMETERS.class_container_button_right} {
+        right: 9%;
+    }
+    .${PARAMETERS.class_track} {
+        display: inline-flex;
+        width: 100%;
+        gap: 1.3%;
+        overflow: visible;
+        z-index: -1;
+        transition: transform 300ms cubic-bezier(.645,.045,.355,1);
+    }
+    .${PARAMETERS.class_item} {
         display: flex;
+        flex-direction: column;
+        flex: 0 0 21rem;
+        background-color: #fff;
     }
-    .${PARAMETERS.html.item.className} {
-        display: grid;
+    .${PARAMETERS.class_item_favorite_div} {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border: solid .5px #b6b7b9;
+        border-radius: 5px;
+        box-shadow: 0 3px 6px 0 rgba(0,0,0,.16);
+        position: absolute;
+        top: 9px;
+        right: 15px;
+        width: 34px;
+        height: 34px;
+        background-color: #fff;
     }
-    .${PARAMETERS.html.item.className} img {
-        width: 25px;
+    .${PARAMETERS.class_item_image} {
+        width: 100%;
+    }
+    .${PARAMETERS.class_item_title} {
+        text-decoration: none !important;
+        color: #302e2b !important;
+        white-space: collapse;
+        width: 100%;
+        display: -webkit-box;
+        margin: 0 0 10px;
+    }
+    .${PARAMETERS.class_item_price} {
+        color: #193db0;
+        font-size: 18px;
+        line-height: 22px;
+        font-weight: bold;
+    }
+    .${PARAMETERS.class_item_infobox} {
+        padding: 0 10px;
+        overflow: hidden;
+    }
+    .${PARAMETERS.class_item_image_wrapper} {
+        position: relative;
+        max-width: 100%;
     }
      `,
     });
     CSS.appendTo("head");
   };
 
+  const moveSlide = (val) => {
+    const gapInPixels = (1.3 / 100) * track.width();
+    const rootFontSize = parseFloat($("html").css("font-size"));
+    const gapInRem = gapInPixels / rootFontSize;
+    slidePercent += val * (21 + gapInRem);
+    track.css({ transform: `translateX(${slidePercent}rem)` });
+  };
+
   const build = async () => {
     await fetchAndCacheProducts(PARAMETERS.apiUrl);
     buildCss();
+    buildItems();
     buildContainer();
   };
 
   const self = {
     build,
+    moveSlide,
   };
 
   return self;
 })();
-
-productCarousel.build();
