@@ -40,7 +40,9 @@ const productCarousel = (() => {
     track,
     items,
     slidePercent = 0,
-    index = 0;
+    index = 0,
+    touchStartX = 0,
+    touchEndX = 0;
 
   const fetchAndCacheProducts = async () => {
     try {
@@ -200,6 +202,7 @@ const productCarousel = (() => {
       containerDiv.append(titleDiv, tray);
       container.append(containerDiv);
       $(".".concat(PARAMETERS.appendTo)).append(container);
+      enableTouchScreen();
       console.log("Container ok!");
     } catch (error) {
       console.error(`Container failed: ${error}`);
@@ -208,120 +211,154 @@ const productCarousel = (() => {
 
   const buildCss = () => {
     const CSS = $("<style>", {
-      html: ` 
-    .${PARAMETERS.class_container} {
-        display: flex;
-        justify-content: center;
-        margin: 0 auto;
-    }
-    .${PARAMETERS.class_container_div} {
-        display: block;
-        width: 80%;
-    }
-    .${PARAMETERS.class_container_title} {
-        font-size: 32px;
-        line-height: 43px;
-        font-weight: lighter;
-        padding: 15px 0;
-        margin: 0;
-        color: #29323b;
-    }
-    .${PARAMETERS.class_tray} {
-        display: flex;
-        flex-flow: row;
-        overflow: hidden;
-        width: 100%;
-        margin: 0 auto;
-    }
-    .${PARAMETERS.class_container_button_left},
-    .${PARAMETERS.class_container_button_right} {
-        width: 22.25px;
-        height: 30.9667px;
-        margin: 0;
-        align-self: center;
-        background: none;
-        border: none;
-        cursor: pointer;
-        position: absolute;
-    }
-    .${PARAMETERS.class_container_button_left} {
-        left: 8%;
-    }
-    .${PARAMETERS.class_container_button_right} {
-        right: 8%;
-    }
-    .${PARAMETERS.class_track} {
-        display: inline-flex;
-        width: 100%;
-        gap: 1.3%;
-        overflow: visible;
-        z-index: 0;
-        transition: transform 300ms cubic-bezier(.645,.045,.355,1);
-        will-change: transform;
-    }
-    .${PARAMETERS.class_item} {
-        display: flex;
-        flex-direction: column;
-        flex: 0 0 21rem;
-        background-color: #fff;
-    }
-    .${PARAMETERS.class_item_favorite_div} {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        border: solid .5px #b6b7b9;
-        border-radius: 5px;
-        box-shadow: 0 3px 6px 0 rgba(0,0,0,.16);
-        position: absolute;
-        top: 9px;
-        right: 15px;
-        width: 34px;
-        height: 34px;
-        background-color: #fff;
-        cursor: pointer;
-    }
-    .${PARAMETERS.class_item_favorite_div} svg{
-        fill: none;
-        stroke: #555;
-    }
-    .${PARAMETERS.class_item_favorite} {
-        fill: #193db0 !important;
-        stroke: #193db0 !important;
-    }
-    .${PARAMETERS.class_item_image} {
-        width: 100%;
-    }
-    .${PARAMETERS.class_item_title} {
-        text-decoration: none !important;
-        color: #302e2b !important;
-        white-space: collapse;
-        width: 100%;
-        display: -webkit-box;
-        margin: 0 0 10px;
-    }
-    .${PARAMETERS.class_item_price} {
-        color: #193db0;
-        font-size: 18px;
-        line-height: 22px;
-        font-weight: bold;
-    }
-    .${PARAMETERS.class_item_infobox} {
-        padding: 0 10px;
-        overflow: hidden;
-    }
-    .${PARAMETERS.class_item_image_wrapper} {
-        position: relative;
-        max-width: 100%;
-    }
-     `,
+      html: `
+      .${PARAMETERS.class_container} {
+          display: flex;
+          justify-content: center;
+          margin: 0 auto;
+      }
+      .${PARAMETERS.class_container_div} {
+          display: block;
+          width: 80%;
+      }
+      .${PARAMETERS.class_container_title} {
+          font-size: 1.5rem; /* Adjust font size for responsiveness */
+          line-height: 2rem;
+          font-weight: lighter;
+          padding: 15px 0;
+          margin: 0;
+          color: #29323b;
+          text-align: center; /* Center align title for small screens */
+      }
+      .${PARAMETERS.class_tray} {
+          display: flex;
+          flex-flow: row;
+          overflow: hidden;
+          width: 100%;
+          margin: 0 auto;
+      }
+      .${PARAMETERS.class_container_button_left},
+      .${PARAMETERS.class_container_button_right} {
+          width: 22.25px;
+          height: 30.9667px;
+          margin: 0;
+          align-self: center;
+          background: none;
+          border: none;
+          cursor: pointer;
+          position: absolute;
+      }
+      .${PARAMETERS.class_container_button_left} {
+          left: 8%;
+      }
+      .${PARAMETERS.class_container_button_right} {
+          right: 8%;
+      }
+      .${PARAMETERS.class_track} {
+          display: inline-flex;
+          width: 100%;
+          gap: 1.3%;
+          overflow: visible;
+          z-index: 0;
+          transition: transform 300ms cubic-bezier(.645,.045,.355,1);
+          will-change: transform;
+      }
+      .${PARAMETERS.class_item} {
+          display: flex;
+          flex-direction: column;
+          flex: 0 0 21rem; /* Default width for items */
+          background-color: #fff;
+      }
+      .${PARAMETERS.class_item_favorite_div} {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          border: solid .5px #b6b7b9;
+          border-radius: 5px;
+          box-shadow: 0 3px 6px 0 rgba(0,0,0,.16);
+          position: absolute;
+          top: 9px;
+          right: 15px;
+          width: 34px;
+          height: 34px;
+          background-color: #fff;
+          cursor: pointer;
+      }
+      .${PARAMETERS.class_item_favorite_div} svg{
+          fill: none;
+          stroke: #555;
+      }
+      .${PARAMETERS.class_item_favorite} {
+          fill: #193db0 !important;
+          stroke: #193db0 !important;
+      }
+      .${PARAMETERS.class_item_image} {
+          width: 100%;
+      }
+      .${PARAMETERS.class_item_title} {
+          text-decoration: none !important;
+          color: #302e2b !important;
+          white-space: collapse;
+          width: 100%;
+          display: -webkit-box;
+          margin: 0 0 10px;
+      }
+      .${PARAMETERS.class_item_price} {
+          color: #193db0;
+          font-size: 18px;
+          line-height: 22px;
+          font-weight: bold;
+      }
+      .${PARAMETERS.class_item_infobox} {
+          padding: 0 10px;
+          overflow: hidden;
+      }
+      .${PARAMETERS.class_item_image_wrapper} {
+          position: relative;
+          max-width: 100%;
+      }
+
+      /* Media queries for responsiveness */
+      @media (max-width: 1200px) {
+        .${PARAMETERS.class_item} {
+          flex: 0 0 16rem;
+        }
+        .${PARAMETERS.class_container_button_left},
+        .${PARAMETERS.class_container_button_right} {
+          width: 20px;
+          height: 28px;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .${PARAMETERS.class_item} {
+          flex: 0 0 14rem;
+        }
+        .${PARAMETERS.class_container_div} {
+          width: 90%;
+        }
+        .${PARAMETERS.class_container_button_left},
+        .${PARAMETERS.class_container_button_right} {
+          display: none;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .${PARAMETERS.class_item} {
+          flex: 0 0 12rem;
+        }
+        .${PARAMETERS.class_container_title} {
+          font-size: 1.25rem;
+        }
+      }
+    `,
     });
     CSS.appendTo("head");
   };
 
   const moveSlide = (direction) => {
-    const visibleItems = Math.floor(
-      tray.width() / $(".product-carousel-item").outerWidth(true),
-    );
+    const itemWidth = $(".product-carousel-item").outerWidth(true);
+    const visibleItems = Math.floor(tray.width() / itemWidth);
     const len = items.length - (visibleItems - 1);
     index += -direction;
     if (index < 0 || index >= len) {
@@ -333,6 +370,32 @@ const productCarousel = (() => {
     const gapInRem = gapInPixels / rootFontSize;
     slidePercent += direction * (21 + gapInRem);
     track.css({ transform: `translateX(${slidePercent}rem)` });
+  };
+
+  const handleTouchSwipe = () => {
+    const swipeDistance = touchEndX - touchStartX;
+    const swipeThreshold = 50;
+    if (swipeDistance > swipeThreshold) {
+      moveSlide(-1);
+    } else if (swipeDistance < -swipeThreshold) {
+      moveSlide(1);
+    }
+    touchStartX = 0;
+    touchEndX = 0;
+  };
+
+  const enableTouchScreen = () => {
+    const isScreenSmall = window.innerWidth <= 768;
+    if (!isScreenSmall) return;
+    track.on("touchstart", (event) => {
+      touchStartX = event.touches[0].clientX;
+    });
+    track.on("touchmove", (event) => {
+      touchEndX = event.touches[0].clientX;
+    });
+    track.on("touchend", () => {
+      handleTouchSwipe();
+    });
   };
 
   const build = async () => {
