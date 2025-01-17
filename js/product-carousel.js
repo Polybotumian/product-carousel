@@ -14,7 +14,8 @@ const productCarousel = (() => {
   const PARAMETERS = {
     apiUrl:
       "https://gist.githubusercontent.com/sevindi/5765c5812bbc8238a38b3cf52f233651/raw/56261d81af8561bf0a7cf692fe572f9e1e91f372/products.json",
-    storageKey: "product-carousel-items",
+    storagekey_items: "product-carousel-items",
+    storagekey_favs: "product-carousel-fav-items",
     appendTo: "product-detail",
     class_container: "product-carousel-container",
     class_container_div: "product-carousel-inner-div",
@@ -34,15 +35,20 @@ const productCarousel = (() => {
   };
 
   let products,
+    favProducts,
     container,
     track,
     items,
-    slidePercent = 0;
+    slidePercent = 0,
+    index = 0;
 
   const fetchAndCacheProducts = async () => {
     try {
       console.log("Checking localStorage..");
-      products = JSON.parse(localStorage.getItem(PARAMETERS.storageKey));
+      products = JSON.parse(localStorage.getItem(PARAMETERS.storagekey_items));
+      favProducts = JSON.parse(
+        localStorage.getItem(PARAMETERS.storagekey_favs),
+      );
       if (products === null) {
         console.log("Fetching product data from the API..");
         const response = await fetch(PARAMETERS.apiUrl);
@@ -53,8 +59,18 @@ const productCarousel = (() => {
           value.favorite = false;
           return value;
         });
-        localStorage.setItem(PARAMETERS.storageKey, JSON.stringify(products));
+        localStorage.setItem(
+          PARAMETERS.storagekey_items,
+          JSON.stringify(products),
+        );
         console.log("Caching data..");
+      }
+      if (favProducts == null) {
+        favProducts = [];
+        localStorage.setItem(
+          PARAMETERS.storagekey_favs,
+          JSON.stringify(favProducts),
+        );
       }
       console.log("Found cached data.");
     } catch (error) {
@@ -71,18 +87,42 @@ const productCarousel = (() => {
           id: String(PARAMETERS.class_item).concat("-", String(index)),
         });
         const imageLink = $("<a>", { href: value.url });
+        imageLink.attr("target", "_blank");
         const image = $("<img>", {
           class: PARAMETERS.class_item_image,
           src: value.img,
         });
         imageLink.append(image);
+        const optionId = value.url.split("/").pop();
+        const isFav =
+          favProducts.filter((str) => str == optionId).length > 0
+            ? true
+            : false;
         const favoriteDiv = $("<div>", {
           class: PARAMETERS.class_item_favorite_div,
+          id: String("option").concat("-", optionId),
         });
-        // Don't use JQuery to create SVG due to JQuery treat it if it is plain HTML
+        favoriteDiv.on("click", (event) => {
+          const parentElement = $(event.currentTarget);
+          const optionId = parentElement.attr("id").split("-").pop();
+          const isFavorite = favProducts.includes(optionId);
+          parentElement
+            .find("svg")
+            .toggleClass(PARAMETERS.class_item_favorite, !isFavorite);
+
+          if (isFavorite) {
+            favProducts = favProducts.filter((str) => str !== optionId);
+          } else {
+            favProducts.push(optionId);
+          }
+          localStorage.setItem(
+            PARAMETERS.storagekey_favs,
+            JSON.stringify(favProducts),
+          );
+        });
         const svg = ` 
-        <svg xmlns="http://www.w3.org/2000/svg" width="20.576" height="19.483" viewBox="0 0 20.576 19.483">
-          <path fill="none" stroke="#555" stroke-width="1.5px" 
+        <svg class="${isFav ? PARAMETERS.class_item_favorite : ""}" xmlns="http://www.w3.org/2000/svg" width="20.576" height="19.483" viewBox="0 0 20.576 19.483">
+          <path stroke-width="1.5px" 
             d="M19.032 7.111c-.278-3.063-2.446-5.285-5.159-5.285a5.128 5.128 0 0 0-4.394 2.532 
                4.942 4.942 0 0 0-4.288-2.532C2.478 1.826.31 4.048.032 7.111a5.449 5.449 0 0 0 .162 2.008 
                8.614 8.614 0 0 0 2.639 4.4l6.642 6.031 6.755-6.027a8.615 8.615 0 0 0 2.639-4.4 
@@ -101,6 +141,7 @@ const productCarousel = (() => {
           text: value.name,
           class: PARAMETERS.class_item_title,
         });
+        titleLink.attr("target", "_blank");
         titleDiv.append(titleLink);
         const priceDiv = $("<p>", {
           class: PARAMETERS.class_item_price,
@@ -171,10 +212,11 @@ const productCarousel = (() => {
     .${PARAMETERS.class_container} {
         display: flex;
         justify-content: center;
+        margin: 0 auto;
     }
     .${PARAMETERS.class_container_div} {
         display: block;
-        width: 78.5%;
+        width: 80%;
     }
     .${PARAMETERS.class_container_title} {
         font-size: 32px;
@@ -188,6 +230,8 @@ const productCarousel = (() => {
         display: flex;
         flex-flow: row;
         overflow: hidden;
+        width: 100%;
+        margin: 0 auto;
     }
     .${PARAMETERS.class_container_button_left},
     .${PARAMETERS.class_container_button_right} {
@@ -201,18 +245,19 @@ const productCarousel = (() => {
         position: absolute;
     }
     .${PARAMETERS.class_container_button_left} {
-        left: 9%;
+        left: 8%;
     }
     .${PARAMETERS.class_container_button_right} {
-        right: 9%;
+        right: 8%;
     }
     .${PARAMETERS.class_track} {
         display: inline-flex;
         width: 100%;
         gap: 1.3%;
         overflow: visible;
-        z-index: -1;
+        z-index: 0;
         transition: transform 300ms cubic-bezier(.645,.045,.355,1);
+        will-change: transform;
     }
     .${PARAMETERS.class_item} {
         display: flex;
@@ -233,6 +278,15 @@ const productCarousel = (() => {
         width: 34px;
         height: 34px;
         background-color: #fff;
+        cursor: pointer;
+    }
+    .${PARAMETERS.class_item_favorite_div} svg{
+        fill: none;
+        stroke: #555;
+    }
+    .${PARAMETERS.class_item_favorite} {
+        fill: #193db0 !important;
+        stroke: #193db0 !important;
     }
     .${PARAMETERS.class_item_image} {
         width: 100%;
@@ -264,11 +318,20 @@ const productCarousel = (() => {
     CSS.appendTo("head");
   };
 
-  const moveSlide = (val) => {
+  const moveSlide = (direction) => {
+    const visibleItems = Math.floor(
+      tray.width() / $(".product-carousel-item").outerWidth(true),
+    );
+    const len = items.length - (visibleItems - 1);
+    index += -direction;
+    if (index < 0 || index >= len) {
+      index = Math.max(0, Math.min(index, len - 1));
+      return;
+    }
     const gapInPixels = (1.3 / 100) * track.width();
     const rootFontSize = parseFloat($("html").css("font-size"));
     const gapInRem = gapInPixels / rootFontSize;
-    slidePercent += val * (21 + gapInRem);
+    slidePercent += direction * (21 + gapInRem);
     track.css({ transform: `translateX(${slidePercent}rem)` });
   };
 
@@ -281,7 +344,6 @@ const productCarousel = (() => {
 
   const self = {
     build,
-    moveSlide,
   };
 
   return self;
